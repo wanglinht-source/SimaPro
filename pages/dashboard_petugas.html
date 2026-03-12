@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Petugas</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        .menu-card { cursor: pointer; transition: 0.3s; border-radius: 20px; border: none; color: white; text-align: center; }
+        .menu-card:hover { transform: scale(1.05); filter: brightness(1.1); }
+        .card-icon { font-size: 2.5rem; margin-bottom: 10px; }
+    </style>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-dark bg-primary shadow-sm mb-4">
+        <div class="container-fluid">
+            <span class="navbar-brand h1">Monitoring PMKS</span>
+            <div>
+                <button class="btn btn-sm btn-outline-light me-2" onclick="refreshSupplierData()" id="refreshBtn">
+                    <i class="bi bi-arrow-clockwise"></i> Supplier
+                </button>
+                <button class="btn btn-sm btn-outline-light" onclick="logout()">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="row g-3">
+            <div class="col-6"><div class="card p-3 menu-card bg-primary" onclick="loadPage('Estimasi')"><i class="bi bi-calendar-check card-icon"></i><h6>Buat Estimasi</h6></div></div>
+            <div class="col-6"><div class="card p-3 menu-card bg-info" onclick="loadPage('PMKS')"><i class="bi bi-truck card-icon"></i><h6>Input PMKS</h6></div></div>
+            <div class="col-6"><div class="card p-3 menu-card bg-success" onclick="loadPage('Supplier')"><i class="bi bi-building card-icon"></i><h6>Tambah Supplier</h6></div></div>
+            <div class="col-6"><div class="card p-3 menu-card bg-warning text-dark" onclick="loadPage('Historis')"><i class="bi bi-clock-history card-icon"></i><h6>Historis Input</h6></div></div>
+        </div>
+        <div id="contentArea" class="mt-4"></div>
+    </div>
+
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="liveToast" class="toast" role="alert">
+            <div class="toast-body" id="toastMessage"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../assets/js/api.js"></script>
+    <script>
+
+        // Cek status login setiap kali halaman dimuat
+            window.addEventListener('DOMContentLoaded', () => {
+    if (!sessionStorage.getItem('isLoggedIn')) {
+        window.location.href = '../login.html';
+    }
+    });
+        // Inisialisasi IndexedDB
+        let db;
+        const request = indexedDB.open("PMKS_DB", 2);
+        request.onupgradeneeded = (e) => {
+            db = e.target.result;
+            if (!db.objectStoreNames.contains("supplier")) db.createObjectStore("supplier", { keyPath: "nama" });
+        };
+        request.onsuccess = (e) => { db = e.target.result; };
+
+        // Fungsi Refresh Data
+// Fungsi Refresh Data dengan notifikasi Toast
+async function refreshSupplierData() {
+    const btn = document.getElementById('refreshBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Loading...';
+    
+    try {
+        const res = await callAPI({ action: 'get_suppliers' });
+        
+        if (res && res.status === 'success') {
+            const tx = db.transaction("supplier", "readwrite");
+            const store = tx.objectStore("supplier");
+            
+            // Hapus data lama dan tambahkan data baru
+            store.clear();
+            res.data.forEach(nama => store.add({ nama: nama }));
+            
+            // Berikan notifikasi sukses
+            showToast("Sukses: Data supplier telah diperbarui!");
+        } else {
+            showToast("Gagal: " + (res.message || "Server tidak merespon"));
+        }
+    } catch (error) {
+        showToast("Error: Terjadi kesalahan koneksi.");
+        console.error(error);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Refresh';
+    }
+}
+
+function loadPage(page) {
+    // Daftar mapping halaman
+    const pages = {
+        'Estimasi': 'estimasi.html',
+        'PMKS': 'pmks.html',
+        'Supplier': 'supplier.html',
+        'Historis': 'historis.html'
+    };
+
+    if (pages[page]) {
+        // Jika ada di daftar, arahkan ke file tersebut
+        window.location.href = pages[page];
+    } else {
+        // Jika belum ada/tidak ditemukan
+        showToast("Menu " + page + " sedang dalam pengembangan.");
+    }
+}
+
+        function showToast(msg) {
+            const toastEl = document.getElementById('liveToast');
+            document.getElementById('toastMessage').innerText = msg;
+            
+            // Cek apakah bootstrap tersedia
+            if (window.bootstrap) {
+                const toast = new bootstrap.Toast(toastEl);
+                toast.show();
+            } else {
+                console.log("Toast fallback:", msg);
+            }
+        }
+
+        function logout() {
+    // Hanya hapus data sesi, bukan localStorage
+    sessionStorage.removeItem('isLoggedIn');
+    sessionStorage.removeItem('role');
+    sessionStorage.removeItem('nama');
+    
+    // Redirect ke login
+    window.location.href = "../login.html";
+}    
+    </script>
+</body>
+</html>

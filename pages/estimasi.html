@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Input Estimasi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+</head>
+<body class="bg-light">
+    
+    <div class="container py-4">
+        <a href="dashboard_petugas.html" class="btn btn-outline-secondary mb-3 btn-sm">
+            <i class="bi bi-arrow-left"></i> Kembali ke Dashboard
+        </a>
+
+        <div class="card shadow-sm p-4 border-0">
+            <h5 class="mb-3 text-primary"><i class="bi bi-calculator"></i> Form Estimasi</h5>
+            <form id="estimasiForm">
+                <div class="mb-3">
+                    <label class="form-label">Tanggal</label>
+                    <input type="date" id="tgl_estimasi" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Supplier</label>
+                    <select id="supplierSelect" class="form-select" required>
+                        <option value="">-- Memuat Data Supplier... --</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Blok</label>
+                    <input type="text" id="blok" class="form-control" placeholder="Contoh: A1" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Luas (Ha)</label>
+                    <input type="number" id="luas" class="form-control" step="0.01" min="0" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">KG Estimasi</label>
+                    <input type="number" id="kg_estimasi" class="form-control" step="1" min="5000" placeholder="Contoh: 1500" required>
+                </div>
+                <button type="submit" id="submitBtn" class="btn btn-primary w-100">Simpan Estimasi</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="liveToast" class="toast" role="alert">
+            <div class="toast-body" id="toastMessage"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../assets/js/api.js"></script>
+    
+    <script>
+       // Cek status login setiap kali halaman dimuat
+window.addEventListener('DOMContentLoaded', () => {
+    if (!sessionStorage.getItem('isLoggedIn')) {
+        window.location.href = '../login.html';
+    }
+});     
+
+        let db;
+        const request = indexedDB.open("PMKS_DB", 2);
+        
+        request.onsuccess = (e) => { 
+            db = e.target.result; 
+            loadSuppliersFromDB(); 
+        };
+
+        // Set default tanggal hari ini
+        document.getElementById('tgl_estimasi').valueAsDate = new Date();
+
+        // Load dari IndexedDB
+        function loadSuppliersFromDB() {
+            const select = document.getElementById('supplierSelect');
+            if (!db || !db.objectStoreNames.contains("supplier")) return;
+
+            const tx = db.transaction("supplier", "readonly");
+            const store = tx.objectStore("supplier");
+            
+            store.getAll().onsuccess = (e) => {
+                const suppliers = e.target.result;
+                select.innerHTML = '<option value="">-- Pilih Supplier --</option>';
+                suppliers.forEach(item => {
+                    let opt = document.createElement('option');
+                    opt.value = item.nama;
+                    opt.textContent = item.nama;
+                    select.appendChild(opt);
+                });
+            };
+        }
+
+        // Submit form
+        document.getElementById('estimasiForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true; 
+            btn.innerText = "Menyimpan...";
+
+            const rawDate = document.getElementById('tgl_estimasi').value;
+            const [y, m, d] = rawDate.split('-');
+            const formattedDate = `${d}/${m}/${y}`;
+
+            try {
+                const res = await callAPI({
+                    action: 'input_estimasi',
+                    tgl: formattedDate,
+                    supplier: document.getElementById('supplierSelect').value,
+                    blok: document.getElementById('blok').value,
+                    luas: document.getElementById('luas').value,
+                    kg: document.getElementById('kg_estimasi').value,
+                    user: sessionStorage.getItem('nama') || 'User'
+                });
+
+                // Tampilkan Toast
+                const toastEl = document.getElementById('liveToast');
+                document.getElementById('toastMessage').innerText = res.message;
+                const toast = new bootstrap.Toast(toastEl);
+                toast.show();
+                
+                // Reset form jika sukses
+                if(res.status === 'success') {
+                    document.getElementById('estimasiForm').reset();
+                    document.getElementById('tgl_estimasi').valueAsDate = new Date();
+                }
+            } catch (err) {
+                console.error(err);
+            } finally {
+                btn.disabled = false; 
+                btn.innerText = "Simpan Estimasi";
+            }
+        });
+    </script>
+</body>
+</html>
