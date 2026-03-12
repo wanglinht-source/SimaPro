@@ -25,7 +25,7 @@
 
 <nav class="navbar navbar-dark bg-success shadow-sm mb-4">
     <div class="container-fluid">
-        <span class="navbar-brand fw-bold"><i class="bi bi-speedometer2"></i> PMKS MANAGEMENT</span>
+        <span class="navbar-brand fw-bold"><i class="bi bi-speedometer2"></i> SimaPro Report</span>
         <button class="btn btn-light btn-sm" onclick="logout()">Logout</button>
     </div>
 </nav>
@@ -43,8 +43,8 @@
     <div class="row g-3 mb-4">
         <div class="col-md-3 col-6"><div class="card kpi-card shadow-sm p-3 bg-white h-100"><small class="text-muted">ESTIMASI (KG)</small><h3 id="totalEst" class="fw-bold text-dark">0</h3></div></div>
         <div class="col-md-3 col-6"><div class="card kpi-card shadow-sm p-3 bg-white h-100"><small class="text-muted">REALISASI (KG)</small><h3 id="totalReal" class="fw-bold text-primary">0</h3></div></div>
-        <div class="col-md-3 col-6"><div class="card kpi-card shadow-sm p-3 bg-white h-100"><small class="text-muted">ACHIEVEMENT</small><h3 id="avgAch" class="fw-bold text-success">0%</h3></div></div>
-        <div class="col-md-3 col-6"><div class="card kpi-card shadow-sm p-3 bg-white h-100"><small class="text-muted">AVG POTONGAN</small><h3 id="avgPot" class="fw-bold text-danger mb-0">0%</h3><small id="totalPotKg" class="text-muted" style="font-size: 0.75rem;">(0 Kg)</small></div></div>
+        <div class="col-md-3 col-6"><div class="card kpi-card shadow-sm p-3 bg-white h-100"><small class="text-muted">VAR PMKS VS EST</small><h3 id="avgAch" class="fw-bold text-success">0%</h3></div></div>
+        <div class="col-md-3 col-6"><div class="card kpi-card shadow-sm p-3 bg-white h-100"><small class="text-muted">% POTONGAN</small><h3 id="avgPot" class="fw-bold text-danger mb-0">0%</h3><small id="totalPotKg" class="text-muted" style="font-size: 0.75rem;">(0 Kg)</small></div></div>
     </div>
 
     <ul class="nav nav-pills mb-3 shadow-sm bg-white p-2 rounded" id="pills-tab">
@@ -197,17 +197,21 @@ function renderKPI(data) {
     document.getElementById('totalEst').innerText = est.toLocaleString();
     document.getElementById('totalReal').innerText = real.toLocaleString();
     
-    // Achievement
-    const achPerc = est > 0 ? (real / est) * 100 : 0;
-    document.getElementById('avgAch').innerText = achPerc.toFixed(1) + "%";
-    
-    // Avg Potongan (%)
-    const avgPotPerc = totalBrutto > 0 ? (totalPotKg / totalBrutto) * 100 : 0;
-    document.getElementById('avgPot').innerText = avgPotPerc.toFixed(2) + "%";
 
-    // TAMPILKAN TOTAL POT (KG)
-    // toLocaleString() membuat angka lebih mudah dibaca (misal: 1,234)
-    document.getElementById('totalPotKg').innerText = `(${totalPotKg.toLocaleString()} Kg)`;
+// Untuk Indikator Pencapaian (Pmks vs Est)
+const achPerc = est > 0 ? ((real - est) / est) * 100 : 0;
+const achColorClass = achPerc < 0 ? 'text-danger' : 'text-success';
+const formattedAch = achPerc < 0 ? `(${Math.abs(achPerc).toFixed(1)}%)` : `${achPerc.toFixed(1)}%`;
+
+document.getElementById('avgAch').innerHTML = `<span class="${achColorClass} fw-bold">${formattedAch}</span>`;
+    
+// POTONGAN (%)
+const avgPotPerc = totalBrutto > 0 ? (totalPotKg / totalBrutto) * 100 : 0;
+const potColorClass = avgPotPerc <= 3 ? 'text-success' : 'text-danger';
+document.getElementById('avgPot').innerHTML = `<span class="${potColorClass} fw-bold">${avgPotPerc.toFixed(2)}%</span>`;
+
+// TAMPILKAN TOTAL POT (KG)
+document.getElementById('totalPotKg').innerText = `(${totalPotKg.toLocaleString()} Kg)`;
 }
 
 function formatTglLaporan(strDate) {
@@ -233,6 +237,9 @@ function renderAnalisa(data) {
         let tglCol = (tglBerformat !== lastTgl) ? `<strong>${tglBerformat}</strong>` : "";
         lastTgl = tglBerformat;
 
+        const valPot = parseFloat(i.pot_persen) || 0;
+        const colorPot = valPot <= 3 ? 'text-success' : 'text-danger';
+
         tbody.innerHTML += `<tr>
             <td style="font-size: 0.8rem;">${tglCol}</td>
             <td style="font-size: 0.8rem;">${i.supplier}</td>
@@ -240,7 +247,7 @@ function renderAnalisa(data) {
             <td class="text-end" style="font-size: 0.85rem;">${(Number(i.real) || 0).toLocaleString()}</td>
             <td class="text-end" style="font-size: 0.85rem;">${(Number(i.pot_kg) || 0).toLocaleString()}</td>
             <td class="text-center">${formatAngka(i.var)}</td>
-            <td class="text-center text-danger">${formatAngka(i.pot_persen)}</td>
+            <td class="text-center ${colorPot} fw-bold">${formatAngka(i.pot_persen)}</td>
         </tr>`;
     });
 }
@@ -316,7 +323,7 @@ function renderRekap(data) {
 
     tbody.innerHTML = Object.keys(rekap).map(s => {
         const v = rekap[s];
-        const vperc = v.est > 0 ? ((v.real / v.est) * 100).toFixed(1) : 0;
+        const vperc = v.est > 0 ? ((v.real - v.est)/v.est * 100).toFixed(1) : 0;
         return `<tr>
             <td class="fw-bold">${s}</td>
             <td class="text-end">${v.est.toLocaleString()}</td>
@@ -339,6 +346,7 @@ function renderTrip(data, startDate, endDate) {
         tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted">Tidak ada data trip.</td></tr>`;
         return;
     }
+    
 
     // Hanya merender baris (tr), bukan seluruh tabel
     tbody.innerHTML = filtered.map(i => `

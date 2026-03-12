@@ -1,4 +1,4 @@
-const GAS_URL = "https://script.google.com/macros/s/AKfycbzYfMyswp1m6BHfQ8y3Al7wwT5mjqh17hPqkgJy00Lh6L1_3vY0iBWwwVNuAujY4wP-SQ/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbzpvqSlPVldVHMajTnNDTtA7NnmbVwOXmZmuAZA7fIA4tyyS6Ah6Ylb6hg_5a_vepG4sQ/exec";
 
 async function callAPI(params) {
     const formData = new URLSearchParams();
