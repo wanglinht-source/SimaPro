@@ -1,4 +1,4 @@
-const GAS_URL = "https://script.google.com/macros/s/AKfycbzyUsD0v0z1qq-Q1_bLjQI0Q3vsIxE1KMOeErM9oMTFaiH3gUBZFjMmHlFGhMeidHjq/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbzYfMyswp1m6BHfQ8y3Al7wwT5mjqh17hPqkgJy00Lh6L1_3vY0iBWwwVNuAujY4wP-SQ/exec";
 
 async function callAPI(params) {
     const formData = new URLSearchParams();
@@ -11,9 +11,12 @@ async function callAPI(params) {
             method: 'POST',
             body: formData
         });
-        return await response.json();
+
+        // Mengambil data JSON dari respons server
+        const result = await response.json();
+        return result; 
     } catch (error) {
-        console.error("Error:", error);
+        console.error("API Call Error:", error);
         return { status: 'error', message: 'Gagal menghubungi server' };
     }
 }

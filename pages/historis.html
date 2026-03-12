@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historis Data</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        .table-responsive { max-height: 60vh; overflow-y: auto; }
+        .sticky-top { z-index: 1020; }
+        .text-end { text-align: right; }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container py-4">
+        <button onclick="goBack()" class="btn btn-outline-secondary mb-3 btn-sm">
+            <i class="bi bi-arrow-left"></i> Kembali ke Dashboard
+        </button>
+        
+        <h4 class="mb-3"><i class="bi bi-clock-history"></i> Data Historis</h4>
+
+        <ul class="nav nav-pills mb-3 shadow-sm bg-white p-2 rounded" id="histTabs">
+            <li class="nav-item flex-fill"><button class="nav-link active w-100" data-bs-toggle="pill" data-bs-target="#tabEst">Estimasi</button></li>
+            <li class="nav-item flex-fill"><button class="nav-link w-100" data-bs-toggle="pill" data-bs-target="#tabPMKS">PMKS</button></li>
+        </ul>
+
+        <div class="tab-content">
+            <div class="tab-pane fade show active" id="tabEst">
+                <div class="table-responsive bg-white shadow-sm rounded border">
+                    <table class="table table-bordered table-hover align-middle mb-0">
+                        <thead class="table-light sticky-top">
+                            <tr><th>Tgl</th><th>Supplier</th><th>Blok</th><th>Luas</th><th class="text-end">Kg</th></tr>
+                        </thead>
+                        <tbody id="estBody"><tr><td colspan="5" class="text-center">Memuat...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="tabPMKS">
+                <div class="table-responsive bg-white shadow-sm rounded border">
+                    <table class="table table-bordered table-hover align-middle mb-0">
+                        <thead class="table-light sticky-top">
+                            <tr><th>Tgl</th><th>Supplier</th><th>No. Tiket</th><th>Plat</th><th>Brutto</th><th>Pot</th><th>Netto</th><th>%</th></tr>
+                        </thead>
+                        <tbody id="pmksBody"><tr><td colspan="8" class="text-center">Memuat...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../assets/js/api.js"></script>
+    <script>
+        if (!sessionStorage.getItem('isLoggedIn')) window.location.href = '../login.html';
+
+        function formatTanggal(tglStr) {
+            const date = new Date(tglStr);
+            if (isNaN(date.getTime())) return tglStr;
+            const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+            return `${("0"+date.getDate()).slice(-2)} ${months[date.getMonth()]} ${date.getFullYear().toString().slice(-2)}`;
+        }
+
+        function goBack() {
+            window.location.href = sessionStorage.getItem('role') === 'management' ? 'dashboard_management.html' : 'dashboard_petugas.html';
+        }
+
+        async function loadHistoris() {
+            const res = await callAPI({ action: 'get_historis' });
+            if(res && res.status === 'success') {
+                document.getElementById('estBody').innerHTML = res.est.map(i => `
+                    <tr>
+                        <td>${formatTanggal(i.tanggal)}</td>
+                        <td>${i.supplier}</td>
+                        <td>${i.blok}</td>
+                        <td>${i.luas}</td>
+                        <td class="text-end">${Number(i.kg_estimasi).toLocaleString()}</td>
+                    </tr>
+                `).join('');
+                
+                document.getElementById('pmksBody').innerHTML = res.pmks.map(i => `
+                    <tr>
+                        <td>${formatTanggal(i.tanggal)}</td>
+                        <td>${i.supplier}</td>
+                        <td>${i.no_tiket}</td>
+                        <td>${i.plat}</td>
+                        <td class="text-end">${Number(i.brutto).toLocaleString()}</td>
+                        <td class="text-end">${Number(i.pot).toLocaleString()}</td>
+                        <td class="text-end">${Number(i.netto).toLocaleString()}</td>
+                        <td class="text-end">${i.pcent_pot}%</td>
+                    </tr>
+                `).join('');
+            }
+        }
+        document.addEventListener('DOMContentLoaded', loadHistoris);
+    </script>
+</body>
+</html>
