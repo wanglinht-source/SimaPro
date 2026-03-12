@@ -230,24 +230,59 @@ function formatTglLaporan(strDate) {
 function renderAnalisa(data) {
     const tbody = document.getElementById('analisaBody');
     tbody.innerHTML = "";
-    let lastTgl = "";
-    
-    data.forEach(i => {
-        const tglBerformat = formatTglLaporan(i.tanggal);
-        let tglCol = (tglBerformat !== lastTgl) ? `<strong>${tglBerformat}</strong>` : "";
-        lastTgl = tglBerformat;
 
-        const valPot = parseFloat(i.pot_persen) || 0;
-        const colorPot = valPot <= 3 ? 'text-success' : 'text-danger';
+    // 1. Kelompokkan data berdasarkan tanggal
+    const groupedData = data.reduce((acc, curr) => {
+        const tgl = formatTglLaporan(curr.tanggal);
+        if (!acc[tgl]) acc[tgl] = { 
+            items: [], totalEst: 0, totalReal: 0, totalPotKg: 0 
+        };
+        
+        acc[tgl].items.push(curr);
+        acc[tgl].totalEst += Number(curr.est) || 0;
+        acc[tgl].totalReal += Number(curr.real) || 0;
+        acc[tgl].totalPotKg += Number(curr.pot_kg) || 0;
+        return acc;
+    }, {});
 
-        tbody.innerHTML += `<tr>
-            <td style="font-size: 0.8rem;">${tglCol}</td>
-            <td style="font-size: 0.8rem;">${i.supplier}</td>
-            <td class="text-end" style="font-size: 0.85rem;">${(Number(i.est) || 0).toLocaleString()}</td>
-            <td class="text-end" style="font-size: 0.85rem;">${(Number(i.real) || 0).toLocaleString()}</td>
-            <td class="text-end" style="font-size: 0.85rem;">${(Number(i.pot_kg) || 0).toLocaleString()}</td>
-            <td class="text-center">${formatAngka(i.var)}</td>
-            <td class="text-center ${colorPot} fw-bold">${formatAngka(i.pot_persen)}</td>
+    // 2. Render baris data
+    Object.keys(groupedData).forEach(tgl => {
+        const group = groupedData[tgl];
+        
+        group.items.forEach((i, index) => {
+            const valPotP = parseFloat(i.pot_persen) || 0;
+            const colorPot = valPotP <= 3 ? 'text-success' : 'text-danger';
+            
+            tbody.innerHTML += `<tr>
+                <td style="font-size: 0.8rem;">${index === 0 ? `<strong>${tgl}</strong>` : ""}</td>
+                <td style="font-size: 0.8rem;">${i.supplier}</td>
+                <td class="text-end">${(Number(i.est) || 0).toLocaleString()}</td>
+                <td class="text-end">${(Number(i.real) || 0).toLocaleString()}</td>
+                <td class="text-end">${(Number(i.pot_kg) || 0).toLocaleString()}</td>
+                <td class="text-center">${formatAngka(i.var)}</td>
+                <td class="text-center ${colorPot} fw-bold">${formatAngka(i.pot_persen)}</td>
+            </tr>`;
+        });
+
+        // 3. HITUNG TOTAL AKURAT (Bukan Rata-rata dari Rata-rata)
+        const totalVar = group.totalPotKg > 0 
+            ? ((group.totalReal - group.totalEst) / group.totalEst) * 100 
+            : 0;
+            
+        const totalPotP = group.totalReal > 0 
+            ? (group.totalPotKg / group.totalReal) * 100 
+            : 0;
+
+        const colorTotalPot = totalPotP <= 3 ? 'text-success' : 'text-danger';
+
+        // 4. Tambahkan Baris Total per Tanggal
+        tbody.innerHTML += `<tr class="table-info fw-bold">
+            <td colspan="2" class="text-end">Total ${tgl}</td>
+            <td class="text-end">${group.totalEst.toLocaleString()}</td>
+            <td class="text-end">${group.totalReal.toLocaleString()}</td>
+            <td class="text-end">${group.totalPotKg.toLocaleString()}</td>
+            <td class="text-center">${formatAngka(totalVar)}</td>
+            <td class="text-center ${colorTotalPot}">${formatAngka(totalPotP)}</td>
         </tr>`;
     });
 }
@@ -273,42 +308,111 @@ function renderDonut(data) {
     });
 }
 
+//GRAFIK LINE
 let lineChartEstReal = null;
 let lineChartPot = null;
 
 function renderLineCharts(data) {
-    // Menyiapkan data harian
-    const labels = [...new Set(data.map(i => formatTglLaporan(i.tanggal)))];
-    const estData = labels.map(l => data.filter(i => formatTglLaporan(i.tanggal) === l).reduce((a, b) => a + Number(b.est), 0));
-    const realData = labels.map(l => data.filter(i => formatTglLaporan(i.tanggal) === l).reduce((a, b) => a + Number(b.real), 0));
+    // 1. Ubah Label menjadi hanya Tanggal (DD)
+    const labels = [...new Set(data.map(i => {
+        const d = new Date(i.tanggal);
+        return d.getDate().toString().padStart(2, '0');
+    }))];
+
+    const estData = labels.map(l => data.filter(i => new Date(i.tanggal).getDate().toString().padStart(2, '0') === l).reduce((a, b) => a + Number(b.est), 0));
+    const realData = labels.map(l => data.filter(i => new Date(i.tanggal).getDate().toString().padStart(2, '0') === l).reduce((a, b) => a + Number(b.real), 0));
+    
+    // Potongan tetap menggunakan logika rata-rata tertimbang yang akurat
     const potData = labels.map(l => {
-        const daily = data.filter(i => formatTglLaporan(i.tanggal) === l);
-        const totalBrutto = daily.reduce((a, b) => a + Number(b.brutto), 0);
+        const daily = data.filter(i => new Date(i.tanggal).getDate().toString().padStart(2, '0') === l);
+        const totalReal = daily.reduce((a, b) => a + Number(b.real), 0);
         const totalPot = daily.reduce((a, b) => a + Number(b.pot_kg), 0);
-        return totalBrutto > 0 ? (totalPot / totalBrutto) * 100 : 0;
+        return totalReal > 0 ? (totalPot / totalReal) * 100 : 0;
     });
 
-    // Menghancurkan chart lama jika ada (agar tidak tumpang tindih)
     if (lineChartEstReal) lineChartEstReal.destroy();
     if (lineChartPot) lineChartPot.destroy();
 
-    // Grafik Est vs Real
+    // 2. Combo Chart Est vs Real (Bar & Line)
     lineChartEstReal = new Chart(document.getElementById('lineEstReal'), {
-        type: 'line',
+        type: 'bar', // Tipe dasar Bar
         data: { labels, datasets: [
-            { label: 'Est (Kg)', data: estData, borderColor: '#6c757d', tension: 0.1 },
-            { label: 'Real (Kg)', data: realData, borderColor: '#198754', tension: 0.1 }
+            { 
+                label: 'Est (Kg)', 
+                data: estData, 
+                backgroundColor: '#24B1F2', // Warna Abu-abu muda
+                borderRadius: 3,
+                order: 2 // Memastikan bar di belakang
+            },
+            { 
+                label: 'Real (Kg)', 
+                data: realData, 
+                type: 'line', // Dataset kedua sebagai Line
+                borderColor: '#198754', 
+                borderWidth: 2, 
+                pointRadius: 4,
+                tension: 0.3,
+                order: 1 // Memastikan line di depan
+            }
         ]},
-        options: { responsive: true, plugins: { title: { display: true, text: 'Tren Est vs Real' } } }
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: false, 
+            scales: {
+                y: { 
+                    min: 0,   
+                    max: 200000, 
+                    ticks: { 
+                        stepSize: 20000,
+                        callback: value => (value >= 1000) ? (value / 1000 + 'K') : value
+                    } 
+                },
+                x: { title: { display: true, text: 'Tanggal' } }
+            },
+            plugins: { 
+                title: { display: true, text: 'Tren Est vs Real (Harian)' },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) label += ': ';
+                            if (context.parsed.y !== null) {
+                                label += context.parsed.y.toLocaleString() + ' Kg';
+                            }
+                            return label;
+                        }
+                    }
+                }
+            } 
+        }
     });
 
-    // Grafik Potongan
+    // 3. Grafik Potongan
     lineChartPot = new Chart(document.getElementById('linePotongan'), {
         type: 'line',
         data: { labels, datasets: [
-            { label: '% Potongan', data: potData, borderColor: '#dc3545', backgroundColor: 'rgba(220, 53, 69, 0.1)', fill: true }
+            { 
+                label: '% Potongan', 
+                data: potData, 
+                borderColor: '#dc3545', 
+                backgroundColor: 'rgba(220, 53, 69, 0.1)', 
+                fill: true,
+                borderWidth: 3,
+                tension: 0.3
+            }
         ]},
-        options: { responsive: true, plugins: { title: { display: true, text: 'Tren % Potongan Harian' } } }
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: false,
+            scales: {
+                y: { 
+                    beginAtZero: true, 
+                    suggestedMax: 5,
+                    ticks: { callback: value => value + "%" }
+                }
+            },
+            plugins: { title: { display: true, text: 'Tren % Potongan' } } 
+        }
     });
 }
 
