@@ -350,28 +350,51 @@ function renderLineCharts(data) {
                 type: 'line', // Dataset kedua sebagai Line
                 borderColor: '#198754', 
                 borderWidth: 2, 
-                pointRadius: 4,
+                pointRadius: 3,
                 tension: 0.3,
                 order: 1 // Memastikan line di depan
             }
         ]},
         options: { 
-            responsive: true, 
-            maintainAspectRatio: false, 
+        responsive: true, 
+        maintainAspectRatio: false,
+        // Tambahkan layout padding untuk menekan grafik agar lebih rapat ke pinggir
+        layout: {
+        padding: { top: 0, bottom: 0, left: 5, right: 5 }
+        },
             scales: {
-                y: { 
-                    min: 0,   
-                    max: 200000, 
-                    ticks: { 
-                        stepSize: 20000,
-                        callback: value => (value >= 1000) ? (value / 1000 + 'K') : value
-                    } 
+                    y: { 
+                        min: 0, 
+                        max: 200000, 
+                        ticks: { 
+                            stepSize: 40000, // Memperbesar step agar label tidak terlalu banyak
+                            font: { size: 10 }, // Mengecilkan font angka di sumbu
+                            callback: value => (value >= 1000) ? (value / 1000 + 'K') : value
+                        } 
+                    },
+                    x: {
+                        ticks: { font: { size: 10 } }, // Mengecilkan font tanggal
+                        grid: { display: false } // Menghilangkan garis grid vertikal agar lebih bersih
+                    }
                 },
-                x: { title: { display: true, text: 'Tanggal' } }
-            },
-            plugins: { 
-                title: { display: true, text: 'Tren Est vs Real (Harian)' },
-                tooltip: {
+                plugins: { 
+                    // Mengecilkan font judul dan mendekatkannya ke grafik
+                    title: { 
+                        display: true, 
+                        text: 'Tren Est vs Real (Harian)',
+                        font: { size: 10 },
+                        padding: { bottom: 3 }
+                    },
+                    // Mengecilkan legenda dan merapatkannya
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            font: { size: 10 },
+                            boxWidth: 12, // Mengecilkan kotak warna legenda
+                            padding: 10
+                        }
+                    },
+                    tooltip: {
                     callbacks: {
                         label: function(context) {
                             let label = context.dataset.label || '';
