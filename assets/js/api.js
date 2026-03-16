@@ -1,18 +1,23 @@
-const GAS_URL = "https://script.google.com/macros/s/AKfycbzpvqSlPVldVHMajTnNDTtA7NnmbVwOXmZmuAZA7fIA4tyyS6Ah6Ylb6hg_5a_vepG4sQ/exec";
+// Definisikan URL Apps Script Anda di sini
+const URL_UTAMA = "https://script.google.com/macros/s/AKfycbzpvqSlPVldVHMajTnNDTtA7NnmbVwOXmZmuAZA7fIA4tyyS6Ah6Ylb6hg_5a_vepG4sQ/exec";
+const URL_ANALISA = "https://script.google.com/macros/s/AKfycbxk4EDnw7K3EcbHdfrbKPy6QVjWreu8N-HB7yn1bcOUJ64ggnneSuUFDFnDWaV7Xv4P/exec"; 
 
-async function callAPI(params) {
+/**
+ * @param {Object} params - Parameter data yang dikirim
+ * @param {String} targetUrl - (Opsional) Gunakan URL_ANALISA jika ingin memanggil script kedua
+ */
+async function callAPI(params, targetUrl = URL_UTAMA) {
     const formData = new URLSearchParams();
     for (const key in params) {
         formData.append(key, params[key]);
     }
 
     try {
-        const response = await fetch(GAS_URL, {
+        const response = await fetch(targetUrl, {
             method: 'POST',
             body: formData
         });
 
-        // Mengambil data JSON dari respons server
         const result = await response.json();
         return result; 
     } catch (error) {

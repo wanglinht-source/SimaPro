@@ -7,22 +7,45 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <style>
-        .table-responsive { max-height: 60vh; overflow-y: auto; }
+        .table-responsive { max-height: 65vh; overflow-y: auto; }
         .sticky-top { z-index: 1020; }
         .text-end { text-align: right; }
+        .bg-total { background-color: #e7f3ff !important; font-weight: bold; font-size: 0.85rem; }
+        .table { font-size: 0.85rem; }
+        
+        /* Gaya untuk Loading Spinner */
+        .loader-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem;
+        }
     </style>
 </head>
 <body class="bg-light">
     <div class="container py-4">
-        <button onclick="goBack()" class="btn btn-outline-secondary mb-3 btn-sm">
-            <i class="bi bi-arrow-left"></i> Kembali ke Dashboard
-        </button>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <button onclick="goBack()" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left"></i> Kembali
+            </button>
+            <button onclick="loadHistoris()" class="btn btn-primary btn-sm">
+                <i class="bi bi-arrow-clockwise"></i> Refresh Data
+            </button>
+        </div>
         
         <h4 class="mb-3"><i class="bi bi-clock-history"></i> Data Historis</h4>
 
         <ul class="nav nav-pills mb-3 shadow-sm bg-white p-2 rounded" id="histTabs">
-            <li class="nav-item flex-fill"><button class="nav-link active w-100" data-bs-toggle="pill" data-bs-target="#tabEst">Estimasi</button></li>
-            <li class="nav-item flex-fill"><button class="nav-link w-100" data-bs-toggle="pill" data-bs-target="#tabPMKS">PMKS</button></li>
+            <li class="nav-item flex-fill">
+                <button class="nav-link active w-100" data-bs-toggle="pill" data-bs-target="#tabEst">Estimasi</button>
+            </li>
+            <li class="nav-item flex-fill">
+                <button class="nav-link w-100" data-bs-toggle="pill" data-bs-target="#tabPMKS">PMKS</button>
+            </li>
+            <li class="nav-item flex-fill">
+                <button class="nav-link w-100" data-bs-toggle="pill" data-bs-target="#tabAnalisa">Analisa</button>
+            </li>
         </ul>
 
         <div class="tab-content">
@@ -32,7 +55,7 @@
                         <thead class="table-light sticky-top">
                             <tr><th>Tgl</th><th>Supplier</th><th>Blok</th><th>Luas</th><th class="text-end">Kg</th></tr>
                         </thead>
-                        <tbody id="estBody"><tr><td colspan="5" class="text-center">Memuat...</td></tr></tbody>
+                        <tbody id="estBody"></tbody>
                     </table>
                 </div>
             </div>
@@ -43,7 +66,22 @@
                         <thead class="table-light sticky-top">
                             <tr><th>Tgl</th><th>Supplier</th><th>No. Tiket</th><th>Plat</th><th>Brutto</th><th>Pot</th><th>Netto</th><th>%</th></tr>
                         </thead>
-                        <tbody id="pmksBody"><tr><td colspan="8" class="text-center">Memuat...</td></tr></tbody>
+                        <tbody id="pmksBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="tabAnalisa">
+                <div class="table-responsive bg-white shadow-sm rounded border">
+                    <table class="table table-bordered table-hover align-middle mb-0">
+                        <thead class="table-light sticky-top">
+                            <tr class="small">
+                                <th>Tgl / Supplier</th><th>Supplier</th><th class="text-end">Est (Kg)</th>
+                                <th class="text-end">Real (Kg)</th><th class="text-end">Pot (Kg)</th>
+                                <th class="text-center">Var %</th><th class="text-center">Pot %</th>
+                            </tr>
+                        </thead>
+                        <tbody id="analisaBody"></tbody>
                     </table>
                 </div>
             </div>
@@ -51,49 +89,163 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="../assets/js/api.js"></script>
     <script>
-        if (!sessionStorage.getItem('isLoggedIn')) window.location.href = '../login.html';
+        const URL_UTAMA = "https://script.google.com/macros/s/AKfycbzpvqSlPVldVHMajTnNDTtA7NnmbVwOXmZmuAZA7fIA4tyyS6Ah6Ylb6hg_5a_vepG4sQ/exec";
+        const URL_ANALISA = "https://script.google.com/macros/s/AKfycbxk4EDnw7K3EcbHdfrbKPy6QVjWreu8N-HB7yn1bcOUJ64ggnneSuUFDFnDWaV7Xv4P/exec";
 
-        function formatTanggal(tglStr) {
-            const date = new Date(tglStr);
-            if (isNaN(date.getTime())) return tglStr;
-            const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
-            return `${("0"+date.getDate()).slice(-2)} ${months[date.getMonth()]} ${date.getFullYear().toString().slice(-2)}`;
+        function showLoading(id, col) {
+            document.getElementById(id).innerHTML = `<tr><td colspan="${col}" class="text-center">
+                <div class="loader-container">
+                    <div class="spinner-border text-primary mb-2" role="status"></div>
+                    <div>Memuat data...</div>
+                </div>
+            </td></tr>`;
         }
 
-        function goBack() {
-            window.location.href = sessionStorage.getItem('role') === 'management' ? 'dashboard_management.html' : 'dashboard_petugas.html';
+        async function callAPI(params) {
+            const formData = new URLSearchParams();
+            for (const key in params) formData.append(key, params[key]);
+            try {
+                const response = await fetch(URL_UTAMA, { method: 'POST', body: formData });
+                return await response.json();
+            } catch (error) { return { status: 'error' }; }
+        }
+
+        function fetchAnalisaJSONP() {
+            return new Promise((resolve, reject) => {
+                const cbName = 'jsonp_cb_' + Math.round(100000 * Math.random());
+                window[cbName] = (data) => {
+                    delete window[cbName];
+                    document.body.removeChild(script);
+                    resolve({ status: 'success', data: data });
+                };
+                const script = document.createElement('script');
+                script.src = `${URL_ANALISA}?action=report&callback=${cbName}`;
+                script.onerror = () => reject({ status: 'error' });
+                document.body.appendChild(script);
+            });
+        }
+
+       function formatTglLaporan(tglStr) {
+            const d = new Date(tglStr);
+            if (isNaN(d.getTime())) return tglStr;
+
+            // Daftar nama bulan singkat
+            const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", 
+                            "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+
+            const tgl = ("0" + d.getDate()).slice(-2); // Ambil 2 digit tanggal
+            const bulan = months[d.getMonth()];         // Ambil nama bulan
+            const tahun = d.getFullYear().toString().slice(-2); // Ambil 2 digit terakhir tahun
+
+            return `${tgl} ${bulan} ${tahun}`;
+        }
+
+        function formatAngka(num) {
+            const n = parseFloat(num);
+            if (isNaN(n)) return "0.00";
+            const formatted = Math.abs(n).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            return n < 0 ? `<span class="text-danger">(${formatted})</span>` : formatted;
         }
 
         async function loadHistoris() {
-            const res = await callAPI({ action: 'get_historis' });
-            if(res && res.status === 'success') {
-                document.getElementById('estBody').innerHTML = res.est.map(i => `
-                    <tr>
-                        <td>${formatTanggal(i.tanggal)}</td>
-                        <td>${i.supplier}</td>
-                        <td>${i.blok}</td>
-                        <td>${i.luas}</td>
-                        <td class="text-end">${Number(i.kg_estimasi).toLocaleString()}</td>
-                    </tr>
-                `).join('');
-                
-                document.getElementById('pmksBody').innerHTML = res.pmks.map(i => `
-                    <tr>
-                        <td>${formatTanggal(i.tanggal)}</td>
-                        <td>${i.supplier}</td>
-                        <td>${i.no_tiket}</td>
-                        <td>${i.plat}</td>
-                        <td class="text-end">${Number(i.brutto).toLocaleString()}</td>
-                        <td class="text-end">${Number(i.pot).toLocaleString()}</td>
-                        <td class="text-end">${Number(i.netto).toLocaleString()}</td>
-                        <td class="text-end">${i.pcent_pot}%</td>
-                    </tr>
-                `).join('');
+            showLoading('estBody', 5);
+            showLoading('pmksBody', 8);
+            showLoading('analisaBody', 7);
+
+            try {
+                const [resHistoris, resAnalisa] = await Promise.all([
+                    callAPI({ action: 'get_historis' }),
+                    fetchAnalisaJSONP()
+                ]);
+
+                if(resHistoris?.status === 'success') {
+                    document.getElementById('estBody').innerHTML = resHistoris.est.map(i => `
+                        <tr><td>${formatTglLaporan(i.tanggal)}</td><td>${i.supplier}</td><td>${i.blok}</td><td>${i.luas}</td><td class="text-end">${Number(i.kg_estimasi).toLocaleString()}</td></tr>
+                    `).join('') || '<tr><td colspan="5" class="text-center">Data Kosong</td></tr>';
+                    
+                    document.getElementById('pmksBody').innerHTML = resHistoris.pmks.map(i => `
+                        <tr><td>${formatTglLaporan(i.tanggal)}</td><td>${i.supplier}</td><td>${i.no_tiket}</td><td>${i.plat}</td><td class="text-end">${Number(i.brutto).toLocaleString()}</td><td class="text-end">${Number(i.pot).toLocaleString()}</td><td class="text-end">${Number(i.netto).toLocaleString()}</td><td class="text-end">${i.pcent_pot}%</td></tr>
+                    `).join('') || '<tr><td colspan="8" class="text-center">Data Kosong</td></tr>';
+                }
+
+                if(resAnalisa?.status === 'success') {
+                    renderTabAnalisa(resAnalisa.data || []);
+                }
+            } catch (err) {
+                const errRow = '<tr><td colspan="10" class="text-center text-danger">Gagal mengambil data</td></tr>';
+                document.getElementById('estBody').innerHTML = errRow;
+                document.getElementById('analisaBody').innerHTML = errRow;
             }
         }
+
+        function renderTabAnalisa(data) {
+    const tbody = document.getElementById('analisaBody');
+    tbody.innerHTML = "";
+    
+    // Dapatkan bulan dan tahun saat ini (Maret 2026)
+    const now = new Date();
+    const currMonth = now.getMonth();
+    const currYear = now.getFullYear();
+
+    // Filter data agar hanya bulan berjalan
+    const filteredData = data.filter(item => {
+        const d = new Date(item.tanggal);
+        return d.getMonth() === currMonth && d.getFullYear() === currYear;
+    });
+
+    if (filteredData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center p-4">Tidak ada data untuk bulan ini</td></tr>';
+        return;
+    }
+
+    // Grouping berdasarkan tanggal
+    const groupedData = filteredData.reduce((acc, curr) => {
+        const tgl = formatTglLaporan(curr.tanggal);
+        if (!acc[tgl]) acc[tgl] = { items: [], totalEst: 0, totalReal: 0, totalPotKg: 0 };
+        acc[tgl].items.push(curr);
+        acc[tgl].totalEst += Number(curr.est) || 0; 
+        acc[tgl].totalReal += Number(curr.real) || 0;   
+        acc[tgl].totalPotKg += Number(curr.pot_kg) || 0; 
+        return acc;
+    }, {});
+
+    Object.keys(groupedData).forEach(tgl => {
+        const group = groupedData[tgl];
+        
+        group.items.forEach((i, index) => {
+            const nEst = Number(i.est) || 0;
+            const nReal = Number(i.real) || 0;
+            const v_persen = nEst > 0 ? ((nReal - nEst) / nEst) * 100 : 0;
+            const pPot = Number(i.pot_persen) || 0;
+            
+            tbody.innerHTML += `<tr>
+                <td class="small">${index === 0 ? `<strong>${tgl}</strong>` : ""}</td>
+                <td class="small">${i.supplier}</td>
+                <td class="text-end">${nEst.toLocaleString()}</td>
+                <td class="text-end">${nReal.toLocaleString()}</td>
+                <td class="text-end">${Number(i.pot_kg || 0).toLocaleString()}</td>
+                <td class="text-center small">${formatAngka(v_persen)}</td>
+                <td class="text-center ${pPot <= 3 ? 'text-success' : 'text-danger'} fw-bold small">${formatAngka(pPot)}</td>
+            </tr>`;
+        });
+
+        const totalVar = group.totalEst > 0 ? ((group.totalReal - group.totalEst) / group.totalEst) * 100 : 0;
+        const totalPotP = group.totalReal > 0 ? (group.totalPotKg / group.totalReal) * 100 : 0;
+
+        tbody.innerHTML += `<tr class="bg-total">
+            <td colspan="2" class="text-end">Total ${tgl}</td>
+            <td class="text-end">${group.totalEst.toLocaleString()}</td>
+            <td class="text-end">${group.totalReal.toLocaleString()}</td>
+            <td class="text-end">${group.totalPotKg.toLocaleString()}</td>
+            <td class="text-center">${formatAngka(totalVar)}</td>
+            <td class="text-center ${totalPotP <= 3 ? 'text-success' : 'text-danger'}">${formatAngka(totalPotP)}</td>
+        </tr>`;
+    });
+}
+
         document.addEventListener('DOMContentLoaded', loadHistoris);
+        function goBack() { window.location.href = 'dashboard_petugas.html'; }
     </script>
 </body>
 </html>

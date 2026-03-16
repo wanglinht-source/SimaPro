@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Management Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        :root { --utama-hijau: #198754; }
+        .bg-success { background-color: var(--utama-hijau) !important; }
+        .nav-pills .nav-link.active { background-color: var(--utama-hijau); }
+        .sticky-top { z-index: 1020; }
+        #loader { z-index: 9999; background: rgba(255,255,255,0.8); }
+        .table td, .table th { white-space: nowrap; font-size: 0.85rem; }
+    </style>
+</head>
+<body class="bg-light">
+
+<div id="loader" class="position-fixed vh-100 vw-100 d-flex justify-content-center align-items-center d-none">
+    <div class="spinner-border text-success" role="status"></div>
+</div>
+
+<nav class="navbar navbar-dark bg-success shadow-sm mb-4">
+    <div class="container-fluid">
+        <span class="navbar-brand fw-bold"><i class="bi bi-speedometer2"></i> SimaPro Report</span>
+        <button class="btn btn-light btn-sm" onclick="logout()">Logout</button>
+    </div>
+</nav>
+
+<div class="card shadow-sm p-3 mb-4 border-0">
+    <div class="row align-items-end g-2">
+        <div class="col-md-3">
+            <label class="small fw-bold">Dari</label>
+            <input type="date" id="dateStart" class="form-control">
+        </div>
+        <div class="col-md-3">
+            <label class="small fw-bold">Sampai</label>
+            <input type="date" id="dateEnd" class="form-control">
+        </div>
+        <div class="col-md-2">
+            <button class="btn btn-success w-100 h-100" onclick="applyFilter()">
+                <i class="bi bi-filter"></i> Filter
+            </button>
+        </div>
+        <div class="col-md-2">
+            <button class="btn btn-primary w-100 h-100" onclick="exportToExcelMultiSheet()">
+                <i class="bi bi-file-earmark-spreadsheet"></i> Export ke .xlsx
+            </button>
+        </div>
+    </div>
+</div>
+
+    
+    
+
+    <ul class="nav nav-pills mb-3 shadow-sm bg-white p-2 rounded">
+        <li class="nav-item flex-fill"><button class="nav-link active w-100" data-bs-toggle="pill" data-bs-target="#tab2">Analisa Harian</button></li>
+        <li class="nav-item flex-fill"><button class="nav-link w-100" data-bs-toggle="pill" data-bs-target="#tab3">Detail Trip</button></li>
+    </ul>
+
+    <div class="tab-content">
+        <div class="tab-pane fade show active" id="tab2">
+            <div class="table-responsive bg-white shadow-sm rounded border" style="max-height: 60vh;">
+                <table class="table table-bordered table-hover align-middle mb-0">
+                    <thead class="table-light sticky-top"><tr><th>Tgl</th><th>Supplier</th><th class="text-end">Est</th><th class="text-end">Real</th><th class="text-end">Pot (Kg)</th><th class="text-center">Var %</th><th class="text-center">% Pot</th></tr></thead>
+                    <tbody id="analisaBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="tab3">
+            <div class="table-responsive bg-white shadow-sm rounded border" style="max-height: 60vh;">
+                <table class="table table-bordered table-hover align-middle mb-0">
+                    <thead class="table-light sticky-top">
+                        <tr><th>Tgl</th><th>Supplier</th><th>Tiket Timbang</th><th>Plat Mobil</th><th class="text-end">Netto</th><th class="text-end">Pot (Kg)</th><th class="text-center">Pot (%)</th></tr>
+                    </thead>
+                    <tbody id="tripBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbxk4EDnw7K3EcbHdfrbKPy6QVjWreu8N-HB7yn1bcOUJ64ggnneSuUFDFnDWaV7Xv4P/exec";
+let allReportData = [];
+let allTripData = [];
+
+function toggleLoader(show) { document.getElementById('loader').classList.toggle('d-none', !show); }
+function callJSONP(action, callback) { const s = document.createElement('script'); s.src = `${API_URL}?action=${action}&callback=${callback}`; document.body.appendChild(s); }
+function formatAngka(num) { const n = parseFloat(num); return isNaN(n) ? "0.00" : (n < 0 ? `<span class="text-danger">(${Math.abs(n).toFixed(2)})</span>` : n.toFixed(2)); }
+function formatDate(date) { return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: '2-digit' }); }
+
+function handleReport(data) { allReportData = data; applyFilter(); toggleLoader(false); }
+function handleTrip(data) { allTripData = data; applyFilter(); }
+
+function applyFilter() {
+    // Gunakan setHours untuk memastikan rentang waktu mencakup seluruh hari (00:00:00 sampai 23:59:59)
+    const start = new Date(document.getElementById('dateStart').value).setHours(0, 0, 0, 0);
+    const end = new Date(document.getElementById('dateEnd').value).setHours(23, 59, 59, 999);
+    
+    const filteredReport = allReportData.filter(i => { 
+        const d = new Date(i.tanggal).getTime(); 
+        return (d >= start && d <= end); 
+    });
+    
+    const filteredTrip = allTripData.filter(i => { 
+        const d = new Date(i.tanggal).getTime(); 
+        return (d >= start && d <= end); 
+    });
+    
+    renderAnalisa(filteredReport);
+    renderTrip(filteredTrip);
+}
+
+function renderAnalisa(data) {
+    const tbody = document.getElementById('analisaBody'); tbody.innerHTML = "";
+    const grouped = data.reduce((acc, curr) => {
+        const tgl = formatDate(new Date(curr.tanggal));
+        if (!acc[tgl]) acc[tgl] = { items: [], totalEst: 0, totalReal: 0, totalPotKg: 0 };
+        acc[tgl].items.push(curr);
+        acc[tgl].totalEst += Number(curr.est) || 0; acc[tgl].totalReal += Number(curr.real) || 0; acc[tgl].totalPotKg += Number(curr.pot_kg) || 0;
+        return acc;
+    }, {});
+
+    Object.keys(grouped).forEach(tgl => {
+        grouped[tgl].items.forEach((i, idx) => {
+            const potP = parseFloat(i.pot_persen) || 0;
+            tbody.innerHTML += `<tr><td>${idx === 0 ? `<strong>${tgl}</strong>` : ""}</td><td>${i.supplier}</td><td class="text-end">${Number(i.est).toLocaleString()}</td><td class="text-end">${Number(i.real).toLocaleString()}</td><td class="text-end">${Number(i.pot_kg).toLocaleString()}</td><td class="text-center">${formatAngka(i.var)}</td><td class="text-center ${potP <= 3 ? 'text-success' : 'text-danger'} fw-bold">${formatAngka(potP)}</td></tr>`;
+        });
+        tbody.innerHTML += `<tr class="table-info fw-bold"><td colspan="2" class="text-end">Total ${tgl}</td><td class="text-end">${grouped[tgl].totalEst.toLocaleString()}</td><td class="text-end">${grouped[tgl].totalReal.toLocaleString()}</td><td class="text-end">${grouped[tgl].totalPotKg.toLocaleString()}</td><td class="text-center">${formatAngka(((grouped[tgl].totalReal - grouped[tgl].totalEst) / grouped[tgl].totalEst) * 100)}</td><td class="text-center">${formatAngka((grouped[tgl].totalPotKg / grouped[tgl].totalReal) * 100)}</td></tr>`;
+    });
+}
+
+function renderTrip(data) {
+    document.getElementById('tripBody').innerHTML = data.map(i => `<tr><td>${formatDate(new Date(i.tanggal))}</td><td>${i.supplier}</td><td>${i.no_tiket}</td><td>${i.plat}</td><td class="text-end">${Number(i.netto).toLocaleString()}</td><td class="text-end">${Number(i.pot_kg).toLocaleString()}</td><td class="text-center">${formatAngka(i.persenpot || 0)}%</td></tr>`).join('');
+}
+
+function logout() { sessionStorage.clear(); window.location.href = "../login.html"; }
+
+window.onload = () => {
+    const now = new Date();
+    document.getElementById('dateStart').value = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    document.getElementById('dateEnd').value = now.toISOString().split('T')[0];
+    toggleLoader(true);
+    callJSONP('report', 'handleReport');
+    callJSONP('detail_trip', 'handleTrip');
+};
+
+function exportToExcelMultiSheet() {
+    // 1. Ambil data yang sudah terfilter (menggunakan logika filter yang sama)
+    const start = new Date(document.getElementById('dateStart').value).setHours(0,0,0,0);
+    const end = new Date(document.getElementById('dateEnd').value).setHours(23,59,59,999);
+    
+    const filter = (data) => data.filter(i => {
+        const d = new Date(i.tanggal).getTime();
+        return (d >= start && d <= end);
+    });
+
+    const dataAnalisa = filter(allReportData);
+    const dataTrip = filter(allTripData);
+
+    // 2. Buat Workbook baru
+    const wb = XLSX.utils.book_new();
+
+    // 3. Konversi Data ke Sheet
+    // Untuk Analisa (kita format dulu agar rapi)
+    const wsAnalisa = XLSX.utils.json_to_sheet(dataAnalisa.map(i => ({
+        Tanggal: formatDate(new Date(i.tanggal)),
+        Supplier: i.supplier,
+        Estimasi: i.est,
+        Real: i.real,
+        Potongan_Kg: i.pot_kg,
+        Varians: i.var,
+        Potongan_Persen: i.pot_persen
+    })));
+
+    // Untuk Detail Trip
+    const wsTrip = XLSX.utils.json_to_sheet(dataTrip.map(i => ({
+        Tanggal: formatDate(new Date(i.tanggal)),
+        Supplier: i.supplier,
+        Tiket: i.no_tiket,
+        Plat: i.plat,
+        Netto: i.netto,
+        Potongan_Kg: i.pot_kg,
+        Potongan_Persen: i.persenpot
+    })));
+
+    // 4. Tambahkan Sheet ke Workbook
+    XLSX.utils.book_append_sheet(wb, wsAnalisa, "Analisa Harian");
+    XLSX.utils.book_append_sheet(wb, wsTrip, "Detail Trip");
+
+    // 5. Download file
+    XLSX.writeFile(wb, "Laporan_SimaPro.xlsx");
+}
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
