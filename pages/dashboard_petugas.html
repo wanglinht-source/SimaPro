@@ -25,12 +25,13 @@
         </div>
     </nav>
 
-    <div class="container">
+<div class="container">
         <div class="row g-3">
             <div class="col-6"><div class="card p-3 menu-card bg-primary" onclick="loadPage('Estimasi')"><i class="bi bi-calendar-check card-icon"></i><h6>Buat Estimasi</h6></div></div>
             <div class="col-6"><div class="card p-3 menu-card bg-info" onclick="loadPage('PMKS')"><i class="bi bi-truck card-icon"></i><h6>Input PMKS</h6></div></div>
             <div class="col-6"><div class="card p-3 menu-card bg-success" onclick="loadPage('Supplier')"><i class="bi bi-building card-icon"></i><h6>Tambah Supplier</h6></div></div>
             <div class="col-6"><div class="card p-3 menu-card bg-warning text-dark" onclick="loadPage('Historis')"><i class="bi bi-clock-history card-icon"></i><h6>Historis Input</h6></div></div>
+            <div class="col-6"><div class="card p-3 menu-card bg-danger text-white" onclick="loadPage('Justifikasi')"><i class="bi bi-shield-exclamation card-icon"></i><h6>Justifikasi</h6></div></div>
         </div>
         <div id="contentArea" class="mt-4"></div>
     </div>
@@ -99,7 +100,7 @@ function loadPage(page) {
         'PMKS': 'pmks.html',
         'Supplier': 'supplier.html',
         'Historis': 'historis.html',
-        'Report' : 'report_user.html'
+        'Justifikasi' : 'justifikasi.html'
     };
 
     if (pages[page]) {

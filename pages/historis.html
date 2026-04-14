@@ -79,6 +79,7 @@
                                 <th>Tgl / Supplier</th><th>Supplier</th><th class="text-end">Est (Kg)</th>
                                 <th class="text-end">Real (Kg)</th><th class="text-end">Pot (Kg)</th>
                                 <th class="text-center">Var %</th><th class="text-center">Pot %</th>
+                                <th class="text-center">Justifikasi</th>
                             </tr>
                         </thead>
                         <tbody id="analisaBody"></tbody>
@@ -151,7 +152,7 @@
         async function loadHistoris() {
             showLoading('estBody', 5);
             showLoading('pmksBody', 8);
-            showLoading('analisaBody', 7);
+            showLoading('analisaBody', 8);
 
             try {
                 const [resHistoris, resAnalisa] = await Promise.all([
@@ -195,7 +196,7 @@
     });
 
     if (filteredData.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center p-4">Tidak ada data untuk bulan ini</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center p-4">Tidak ada data untuk bulan ini</td></tr>';
         return;
     }
 
@@ -227,6 +228,7 @@
                 <td class="text-end">${Number(i.pot_kg || 0).toLocaleString()}</td>
                 <td class="text-center small">${formatAngka(v_persen)}</td>
                 <td class="text-center ${pPot <= 3 ? 'text-success' : 'text-danger'} fw-bold small">${formatAngka(pPot)}</td>
+                <td class="small">${i.justifikasi}</td>
             </tr>`;
         });
 

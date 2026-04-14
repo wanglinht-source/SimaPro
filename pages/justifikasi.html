@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SimaPro - Justifikasi Analisa</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        :root { --primary-color: #10b981; }
+        body { background-color: #f1f5f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        /* Container Tabel & Sticky Header */
+        .table-responsive { 
+            max-height: 75vh; 
+            overflow-y: auto; 
+            border-radius: 12px;
+            background: white;
+        }
+
+        .table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background-color: #1e293b !important; /* Slate 800 */
+            color: white;
+            padding: 12px 15px;
+            font-size: 11px;
+            letter-spacing: 0.05em;
+            border: none;
+        }
+
+        /* Styling Baris & Kolom */
+        .table tbody td { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; }
+        .table-hover tbody tr:hover { background-color: #f8fafc; }
+        
+        .bg-total { background-color: #f1f5f9 !important; font-weight: 800; }
+        .loader-container { padding: 5rem; text-align: center; }
+        
+        /* Custom Button */
+        .btn-justif {
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            padding: 4px 12px;
+            border-radius: 50px;
+            transition: all 0.2s;
+        }
+        
+        .filter-card {
+            background: white;
+            border-radius: 12px;
+            border: none;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .form-select-custom {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            font-weight: 600;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container py-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <button onclick="window.history.back()" class="btn btn-white shadow-sm btn-sm px-3 rounded-pill fw-bold">
+                <i class="bi bi-chevron-left"></i> Kembali
+            </button>
+            <h5 class="m-0 fw-black text-slate-800 uppercase tracking-tight">
+                <i class="bi bi-shield-check text-success me-2"></i>Justifikasi Analisa
+            </h5>
+            <button onclick="loadAnalisa()" class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm fw-bold">
+                <i class="bi bi-arrow-clockwise"></i> Refresh
+            </button>
+        </div>
+
+        <div class="card filter-card mb-4">
+            <div class="card-body py-3">
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <label class="small fw-bold text-muted text-uppercase mb-1 d-block" style="font-size: 9px;">Pilih Bulan Laporan</label>
+                        <select id="filterBulan" class="form-select form-select-custom rounded-pill px-4" onchange="renderTable(allDataRaw)">
+                            <option value="0">Januari</option><option value="1">Februari</option>
+                            <option value="2">Maret</option><option value="3">April</option>
+                            <option value="4">Mei</option><option value="5">Juni</option>
+                            <option value="6">Juli</option><option value="7">Agustus</option>
+                            <option value="8">September</option><option value="9">Oktober</option>
+                            <option value="10">November</option><option value="11">Desember</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr class="text-uppercase">
+                            <th style="width: 120px;">Tgl</th>
+                            <th>Supplier</th>
+                            <th class="text-end">Est (Kg)</th>
+                            <th class="text-end">Real (Kg)</th>
+                            <th class="text-end">Pot (Kg)</th>
+                            <th class="text-center">Var %</th>
+                            <th class="text-center">Pot %</th>
+                            <th class="text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="analisaBody">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalJustifikasi" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header border-0 bg-success text-white py-3">
+                    <h6 class="modal-title fw-bold text-uppercase small">Form Justifikasi Lapangan</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted text-uppercase">Supplier & Tanggal</label>
+                        <input type="text" id="j_info" class="form-control bg-light border-0 fw-bold" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted text-uppercase">Catatan Justifikasi</label>
+                        <textarea id="j_text" class="form-control border-light shadow-sm" rows="4" placeholder="Jelaskan alasan selisih atau kondisi buah di lapangan..."></textarea>
+                    </div>
+                    <input type="hidden" id="j_tgl">
+                    <input type="hidden" id="j_supp">
+                </div>
+                <div class="modal-footer border-0 bg-light p-3">
+                    <button type="button" class="btn btn-link text-muted fw-bold text-decoration-none" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" onclick="simpanJustifikasi()" class="btn btn-success px-4 rounded-pill fw-bold" id="btnSimpanJ">
+                        <i class="bi bi-cloud-arrow-up-fill me-2"></i>Simpan Ke Sheet
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const URL_ANALISA = "https://script.google.com/macros/s/AKfycbxk4EDnw7K3EcbHdfrbKPy6QVjWreu8N-HB7yn1bcOUJ64ggnneSuUFDFnDWaV7Xv4P/exec";
+        const URL_UTAMA = "https://script.google.com/macros/s/AKfycby-kKQ3DZEFG9oqSX9DFte-FSioF8FHEWkgqppC7ZHnQ5wwOcfa7LVUKUIsSXeozNxPig/exec";
+
+        let modalJ;
+        let allDataRaw = [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            modalJ = new bootstrap.Modal(document.getElementById('modalJustifikasi'));
+            // Set bulan berjalan
+            document.getElementById('filterBulan').value = new Date().getMonth();
+            loadAnalisa();
+        });
+
+        async function loadAnalisa() {
+            const tbody = document.getElementById('analisaBody');
+            tbody.innerHTML = `<tr><td colspan="8" class="loader-container">
+                <div class="spinner-border text-primary spinner-border-sm mb-3"></div>
+                <div class="small fw-bold text-muted uppercase tracking-widest">Sinkronisasi Data...</div>
+            </td></tr>`;
+
+            try {
+                const res = await fetchAnalisaJSONP();
+                if (res.status === 'success') {
+                    allDataRaw = res.data;
+                    renderTable(allDataRaw);
+                }
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center p-5 text-danger fw-bold">Gagal Terhubung ke Server Analisa</td></tr>`;
+            }
+        }
+
+        function fetchAnalisaJSONP() {
+            return new Promise((resolve) => {
+                const cbName = 'jsonp_cb_' + Math.round(100000 * Math.random());
+                window[cbName] = (data) => {
+                    delete window[cbName];
+                    document.body.removeChild(script);
+                    resolve({ status: 'success', data: data });
+                };
+                const script = document.createElement('script');
+                script.src = `${URL_ANALISA}?action=report&callback=${cbName}`;
+                document.body.appendChild(script);
+            });
+        }
+
+        function renderTable(data) {
+            const tbody = document.getElementById('analisaBody');
+            const selectedMonth = parseInt(document.getElementById('filterBulan').value);
+            const currentYear = new Date().getFullYear();
+            tbody.innerHTML = "";
+
+            const filteredData = data.filter(item => {
+                const d = new Date(item.tanggal);
+                return d.getMonth() === selectedMonth && d.getFullYear() === currentYear;
+            });
+
+            if (filteredData.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center p-5 text-muted small fw-bold uppercase italic">Data Kosong</td></tr>`;
+                return;
+            }
+
+            const groupedData = filteredData.reduce((acc, curr) => {
+                const tglKey = new Date(curr.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: '2-digit' });
+                if (!acc[tglKey]) acc[tglKey] = [];
+                acc[tglKey].push(curr);
+                return acc;
+            }, {});
+
+            Object.keys(groupedData).forEach(tgl => {
+                groupedData[tgl].forEach((i, idx) => {
+                    const nEst = Number(i.est) || 0;
+                    const nReal = Number(i.real) || 0;
+                    const vP = nEst > 0 ? ((nReal - nEst) / nEst) * 100 : 0;
+                    const pP = Number(i.pot_persen) || 0;
+                    const warning = Math.abs(vP) > 5 || pP > 3;
+
+                    tbody.innerHTML += `
+                        <tr>
+                            <td class="small fw-black text-slate-400">${idx === 0 ? tgl : ""}</td>
+                            <td class="small fw-bold text-slate-700 uppercase">${i.supplier}</td>
+                            <td class="text-end text-muted small">${nEst.toLocaleString()}</td>
+                            <td class="text-end fw-black text-slate-800">${nReal.toLocaleString()}</td>
+                            <td class="text-end text-muted small">${Number(i.pot_kg || 0).toLocaleString()}</td>
+                            <td class="text-center small fw-bold ${vP < 0 ? 'text-danger' : 'text-success'}">${vP.toFixed(2)}%</td>
+                            <td class="text-center fw-black ${pP > 3 ? 'text-danger' : 'text-success'}">${pP.toFixed(2)}%</td>
+                            <td class="text-center">
+                                ${warning ? 
+                                    `<button class="btn btn-warning btn-justif text-white shadow-sm" onclick="bukaModal('${i.tanggal}', '${i.supplier}')">Justifikasi</button>` : 
+                                    `<i class="bi bi-check-circle-fill text-success opacity-25"></i>`}
+                            </td>
+                        </tr>`;
+                });
+            });
+        }
+
+        function bukaModal(tgl, supp) {
+            document.getElementById('j_tgl').value = tgl;
+            document.getElementById('j_supp').value = supp;
+            document.getElementById('j_info').value = `${supp} | ${new Date(tgl).toLocaleDateString('id-ID')}`;
+            document.getElementById('j_text').value = "";
+            modalJ.show();
+        }
+
+        async function simpanJustifikasi() {
+    const btn = document.getElementById('btnSimpanJ');
+    const ket = document.getElementById('j_text').value;
+    if (!ket) return alert("Alasan wajib diisi!");
+
+    // Ambil nama user dari localStorage (sesuaikan key-nya, biasanya 'nama' atau 'user')
+    const userAktif = localStorage.getItem('nama') || 'Admin_SimaPro'; 
+
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>Menyimpan...`;
+
+    const formData = new URLSearchParams();
+    formData.append('action', 'save_justifikasi');
+    formData.append('tanggal', document.getElementById('j_tgl').value);
+    formData.append('supplier', document.getElementById('j_supp').value);
+    formData.append('justifikasi', ket);
+    formData.append('created_by', userAktif); // Menggunakan user aktif
+
+               try {
+                const response = await fetch(URL_UTAMA, { method: 'POST', body: formData });
+                const res = await response.json();
+                if (res.status === 'success') {
+                    alert("Justifikasi Berhasil Disimpan!");
+                    modalJ.hide();
+                }
+            } catch (err) {
+                alert("Kesalahan Sistem!");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="bi bi-cloud-arrow-up-fill me-2"></i>Simpan Ke Sheet`;
+            }
+        }
+    </script>
+</body>
+</html>
