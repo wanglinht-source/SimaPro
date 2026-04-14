@@ -10,7 +10,6 @@
         :root { --primary-color: #10b981; }
         body { background-color: #f1f5f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         
-        /* Container Tabel & Sticky Header */
         .table-responsive { 
             max-height: 75vh; 
             overflow-y: auto; 
@@ -22,7 +21,7 @@
             position: sticky;
             top: 0;
             z-index: 20;
-            background-color: #1e293b !important; /* Slate 800 */
+            background-color: #1e293b !important;
             color: white;
             padding: 12px 15px;
             font-size: 11px;
@@ -30,14 +29,11 @@
             border: none;
         }
 
-        /* Styling Baris & Kolom */
         .table tbody td { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; }
         .table-hover tbody tr:hover { background-color: #f8fafc; }
         
-        .bg-total { background-color: #f1f5f9 !important; font-weight: 800; }
         .loader-container { padding: 5rem; text-align: center; }
         
-        /* Custom Button */
         .btn-justif {
             font-size: 10px;
             font-weight: 800;
@@ -66,11 +62,11 @@
 
     <div class="container py-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <button onclick="window.history.back()" class="btn btn-white shadow-sm btn-sm px-3 rounded-pill fw-bold">
+            <button onclick="window.history.back()" class="btn btn-white shadow-sm btn-sm px-3 rounded-pill fw-bold bg-white">
                 <i class="bi bi-chevron-left"></i> Kembali
             </button>
-            <h5 class="m-0 fw-black text-slate-800 uppercase tracking-tight">
-                <i class="bi bi-shield-check text-success me-2"></i>Justifikasi Analisa
+            <h5 class="m-0 fw-bold text-dark text-uppercase tracking-tight">
+                <i class="bi bi-shield-check text-success me-2"></i>Justifikasi PMKS vs Estimasi
             </h5>
             <button onclick="loadAnalisa()" class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm fw-bold">
                 <i class="bi bi-arrow-clockwise"></i> Refresh
@@ -110,8 +106,7 @@
                             <th class="text-center">Aksi</th>
                         </tr>
                     </thead>
-                    <tbody id="analisaBody">
-                        </tbody>
+                    <tbody id="analisaBody"></tbody>
                 </table>
             </div>
         </div>
@@ -131,7 +126,7 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label small fw-bold text-muted text-uppercase">Catatan Justifikasi</label>
-                        <textarea id="j_text" class="form-control border-light shadow-sm" rows="4" placeholder="Jelaskan alasan selisih atau kondisi buah di lapangan..."></textarea>
+                        <textarea id="j_text" class="form-control border-light shadow-sm" rows="4" placeholder="Jelaskan alasan selisih..."></textarea>
                     </div>
                     <input type="hidden" id="j_tgl">
                     <input type="hidden" id="j_supp">
@@ -139,9 +134,21 @@
                 <div class="modal-footer border-0 bg-light p-3">
                     <button type="button" class="btn btn-link text-muted fw-bold text-decoration-none" data-bs-dismiss="modal">Batal</button>
                     <button type="button" onclick="simpanJustifikasi()" class="btn btn-success px-4 rounded-pill fw-bold" id="btnSimpanJ">
-                        <i class="bi bi-cloud-arrow-up-fill me-2"></i>Simpan Ke Sheet
+                        <i class="bi bi-cloud-arrow-up-fill me-2"></i>Simpan
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="liveToast" class="toast border-0 shadow-lg rounded-3" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body d-flex align-items-center py-3">
+                    <i id="toastIcon" class="bi me-2 fs-5"></i>
+                    <span id="toastMessage" class="fw-bold small"></span>
+                </div>
+                <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
             </div>
         </div>
     </div>
@@ -151,15 +158,38 @@
         const URL_ANALISA = "https://script.google.com/macros/s/AKfycbxk4EDnw7K3EcbHdfrbKPy6QVjWreu8N-HB7yn1bcOUJ64ggnneSuUFDFnDWaV7Xv4P/exec";
         const URL_UTAMA = "https://script.google.com/macros/s/AKfycby-kKQ3DZEFG9oqSX9DFte-FSioF8FHEWkgqppC7ZHnQ5wwOcfa7LVUKUIsSXeozNxPig/exec";
 
-        let modalJ;
+        let modalJ, toastBS;
         let allDataRaw = [];
 
         document.addEventListener('DOMContentLoaded', () => {
             modalJ = new bootstrap.Modal(document.getElementById('modalJustifikasi'));
-            // Set bulan berjalan
+            toastBS = new bootstrap.Toast(document.getElementById('liveToast'));
             document.getElementById('filterBulan').value = new Date().getMonth();
             loadAnalisa();
         });
+
+        function showMessage(msg, type = 'success') {
+            const toastEl = document.getElementById('liveToast');
+            const icon = document.getElementById('toastIcon');
+            const message = document.getElementById('toastMessage');
+
+            toastEl.classList.remove('bg-success', 'bg-danger', 'bg-warning', 'text-white');
+            icon.classList.remove('bi-check-circle-fill', 'bi-exclamation-triangle-fill', 'bi-x-circle-fill');
+
+            if (type === 'success') {
+                toastEl.classList.add('bg-success', 'text-white');
+                icon.classList.add('bi-check-circle-fill');
+            } else if (type === 'error') {
+                toastEl.classList.add('bg-danger', 'text-white');
+                icon.classList.add('bi-x-circle-fill');
+            } else {
+                toastEl.classList.add('bg-warning', 'text-dark');
+                icon.classList.add('bi-exclamation-triangle-fill');
+            }
+
+            message.innerText = msg;
+            toastBS.show();
+        }
 
         async function loadAnalisa() {
             const tbody = document.getElementById('analisaBody');
@@ -184,10 +214,12 @@
                 const cbName = 'jsonp_cb_' + Math.round(100000 * Math.random());
                 window[cbName] = (data) => {
                     delete window[cbName];
-                    document.body.removeChild(script);
+                    const s = document.getElementById(cbName);
+                    if(s) document.body.removeChild(s);
                     resolve({ status: 'success', data: data });
                 };
                 const script = document.createElement('script');
+                script.id = cbName;
                 script.src = `${URL_ANALISA}?action=report&callback=${cbName}`;
                 document.body.appendChild(script);
             });
@@ -222,21 +254,26 @@
                     const nReal = Number(i.real) || 0;
                     const vP = nEst > 0 ? ((nReal - nEst) / nEst) * 100 : 0;
                     const pP = Number(i.pot_persen) || 0;
-                    const warning = Math.abs(vP) > 5 || pP > 3;
+                    
+                    const sudahAdaJustif = i.justifikasi && i.justifikasi.toString().trim() !== "";
+                    const butuhJustifikasi = (Math.abs(vP) > 10 || pP > 3) && !sudahAdaJustif;
 
                     tbody.innerHTML += `
                         <tr>
-                            <td class="small fw-black text-slate-400">${idx === 0 ? tgl : ""}</td>
-                            <td class="small fw-bold text-slate-700 uppercase">${i.supplier}</td>
+                            <td class="small fw-bold text-secondary">${idx === 0 ? tgl : ""}</td>
+                            <td class="small fw-bold text-dark text-uppercase">${i.supplier}</td>
                             <td class="text-end text-muted small">${nEst.toLocaleString()}</td>
-                            <td class="text-end fw-black text-slate-800">${nReal.toLocaleString()}</td>
+                            <td class="text-end fw-bold">${nReal.toLocaleString()}</td>
                             <td class="text-end text-muted small">${Number(i.pot_kg || 0).toLocaleString()}</td>
                             <td class="text-center small fw-bold ${vP < 0 ? 'text-danger' : 'text-success'}">${vP.toFixed(2)}%</td>
-                            <td class="text-center fw-black ${pP > 3 ? 'text-danger' : 'text-success'}">${pP.toFixed(2)}%</td>
+                            <td class="text-center fw-bold ${pP > 3 ? 'text-danger' : 'text-success'}">${pP.toFixed(2)}%</td>
                             <td class="text-center">
-                                ${warning ? 
+                                ${butuhJustifikasi ? 
                                     `<button class="btn btn-warning btn-justif text-white shadow-sm" onclick="bukaModal('${i.tanggal}', '${i.supplier}')">Justifikasi</button>` : 
-                                    `<i class="bi bi-check-circle-fill text-success opacity-25"></i>`}
+                                    (sudahAdaJustif ? 
+                                        `<i class="bi bi-check-circle-fill text-success" title="${i.justifikasi}"></i> <small class="text-success fw-bold" style="font-size:9px">DONE</small>` : 
+                                        `<i class="bi bi-check-circle-fill text-success opacity-25"></i>`)
+                                }
                             </td>
                         </tr>`;
                 });
@@ -252,32 +289,38 @@
         }
 
         async function simpanJustifikasi() {
-    const btn = document.getElementById('btnSimpanJ');
-    const ket = document.getElementById('j_text').value;
-    if (!ket) return alert("Alasan wajib diisi!");
+            const btn = document.getElementById('btnSimpanJ');
+            const ket = document.getElementById('j_text').value;
+            
+            if (!ket) {
+                showMessage("Alasan wajib diisi!", "warning");
+                return;
+            }
 
-    // Ambil nama user dari localStorage (sesuaikan key-nya, biasanya 'nama' atau 'user')
-    const userAktif = localStorage.getItem('nama') || 'Admin_SimaPro'; 
+            const userAktif = sessionStorage.getItem('nama') || 'Admin_SimaPro'; 
+            btn.disabled = true;
+            btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>Menyimpan...`;
 
-    btn.disabled = true;
-    btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>Menyimpan...`;
+            const formData = new URLSearchParams();
+            formData.append('action', 'save_justifikasi');
+            formData.append('tanggal', document.getElementById('j_tgl').value);
+            formData.append('supplier', document.getElementById('j_supp').value);
+            formData.append('justifikasi', ket);
+            formData.append('created_by', userAktif);
 
-    const formData = new URLSearchParams();
-    formData.append('action', 'save_justifikasi');
-    formData.append('tanggal', document.getElementById('j_tgl').value);
-    formData.append('supplier', document.getElementById('j_supp').value);
-    formData.append('justifikasi', ket);
-    formData.append('created_by', userAktif); // Menggunakan user aktif
-
-               try {
+            try {
                 const response = await fetch(URL_UTAMA, { method: 'POST', body: formData });
                 const res = await response.json();
+                
                 if (res.status === 'success') {
-                    alert("Justifikasi Berhasil Disimpan!");
+                    showMessage("Justifikasi Berhasil Disimpan!");
                     modalJ.hide();
+                    loadAnalisa(); // Auto-refresh data
+                } else {
+                    throw new Error();
                 }
             } catch (err) {
-                alert("Kesalahan Sistem!");
+                showMessage("Gagal menyimpan ke Sheet!", "error");
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = `<i class="bi bi-cloud-arrow-up-fill me-2"></i>Simpan Ke Sheet`;
