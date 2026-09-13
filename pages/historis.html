@@ -161,17 +161,21 @@
                 ]);
 
                 if(resHistoris?.status === 'success') {
-                    const estSorted = (resHistoris.est || []).sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
-                    const pmksSorted = (resHistoris.pmks || []).sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
-
-                    document.getElementById('estBody').innerHTML = estSorted.map(i => `
-                    <tr><td>${formatTglLaporan(i.tanggal)}</td><td>${i.supplier}</td><td>${i.blok}</td><td>${i.luas}</td><td class="text-end">${Number(i.kg_estimasi).toLocaleString()}</td></tr>
-                    `).join('') || '<tr><td colspan="5" class="text-center">Data Kosong</td></tr>';
+    // Urutkan data Estimasi dari tanggal terbaru ke tertua
+    const estSorted = (resHistoris.est || []).sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
     
-                    document.getElementById('pmksBody').innerHTML = pmksSorted.map(i => `
-                    <tr><td>${formatTglLaporan(i.tanggal)}</td><td>${i.supplier}</td><td>${i.no_tiket}</td><td>${i.plat}</td><td class="text-end">${Number(i.brutto).toLocaleString()}</td><td class="text-end">${Number(i.pot).toLocaleString()}</td><td class="text-end">${Number(i.netto).toLocaleString()}</td><td class="text-end">${i.pcent_pot}%</td></tr>
-                   `).join('') || '<tr><td colspan="8" class="text-center">Data Kosong</td></tr>';
-                }
+    // Urutkan data PMKS dari tanggal terbaru ke tertua
+    const pmksSorted = (resHistoris.pmks || []).sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
+
+    document.getElementById('estBody').innerHTML = estSorted.map(i => `
+        <tr><td>${formatTglLaporan(i.tanggal)}</td><td>${i.supplier}</td><td>${i.blok}</td><td>${i.luas}</td><td class="text-end">${Number(i.kg_estimasi).toLocaleString()}</td></tr>
+    `).join('') || '<tr><td colspan="5" class="text-center">Data Kosong</td></tr>';
+    
+    document.getElementById('pmksBody').innerHTML = pmksSorted.map(i => `
+        <tr><td>${formatTglLaporan(i.tanggal)}</td><td>${i.supplier}</td><td>${i.no_tiket}</td><td>${i.plat}</td><td class="text-end">${Number(i.brutto).toLocaleString()}</td><td class="text-end">${Number(i.pot).toLocaleString()}</td><td class="text-end">${Number(i.netto).toLocaleString()}</td><td class="text-end">${i.pcent_pot}%</td></tr>
+    `).join('') || '<tr><td colspan="8" class="text-center">Data Kosong</td></tr>';
+}
+
                 if(resAnalisa?.status === 'success') {
                     renderTabAnalisa(resAnalisa.data || []);
                 }
